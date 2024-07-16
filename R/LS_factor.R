@@ -1,0 +1,306 @@
+#' @title Least Squares Estimation of Linear Panel Data Models with Interactive Fixed Effects
+#'
+#' @description This function loads a file as a matrix. It assumes that the first column contains the rownames and the subsequent columns are the sample identifiers. Any rows with duplicated row names will be dropped with the first one being kept.
+#'
+#' @details
+#' \strong{Disclaimer:} This function is translated and modified from the Matlab function \code{LS_factor.m} by Martin Weidner, and the documentation details are also mainly from the original function.
+#' This code is offered with no guarantees. Not all features of this code were properly tested. Please let me know if you find any bugs or encounter any problems while using this code. All feedback is appreciated.
+#'
+#' \strong{Different computational methods:}
+#' \itemize{
+#'   \item Method 1 (recommended default method) iterates the following two steps until convergence:
+#'     \itemize{
+#'       \item Step 1: forgiven \code{beta} compute update for \code{lambda} and \code{f} as principal components of \code{Y - beta * X} (same as in method 1)
+#'       \item Step 2: forgiven \code{lambda} and \code{f} run a pooled OLS regression of \code{Y - lambda * t(f)} on \code{X} to update \code{beta}
+#'   }
+#'   \item (Original method 2 utilizes Matlab's optimization function "\code{fminunc}", which we didn't replicate here)
+#'   The procedure is repeated multiple times with different starting values.
+#'   \item Method 3 (described in Bai, 2009) iterates the following two steps until convergence:
+#'     \itemize{
+#'       \item Step 1: forgiven \code{beta} compute update for \code{lambda} and \code{f} as principal components of \code{Y - beta * X} (same as in method 1)
+#'       \item Step 2: forgiven \code{lambda} and \code{f} run a pooled OLS regression of \code{Y - lambda * t(f)} on \code{X} to update \code{beta}
+#'   }
+#'   The procedure is repeated multiple times with different starting values.
+#' }
+#'
+#' \strong{Comments:}
+#' \itemize{
+#'   \item Another method would be to use Step 1 as in Method 1&3, but to replace step 2 with a regression of \code{Y} on either \code{M_lambda * X} or \code{X * M_f}, i.e. to only project out either lambda or f in the step 2 regression.
+#'     Bai (2009) mentions this method and refers to Ahn, Lee, and Schmidt (2001), Kiefer (1980) and Sargan (1964) forthis. We have not tested this alternative method, but we suspect that Method 1 performs better in terms of speed of convergence.
+#'   \item This alternative method and the method proposed by Bai (2009), i.e. "method 3" here, have the property of reducing the LS objective function in each step.
+#'     This is not true for Method 1 and may be seen as a disadvantage of Method 1.
+#'     However, we found this to be a nice feature, because we use this property of Method 1 as a stopping rule:
+#'     if the LS objective function does not improve, then we know we are "far away" from a proper minimum, so we stop the iteration and begin the iteration with another randomly chosen starting value. Note that multiple runs with different starting values are required anyways for all methods (because the LS objective function may have multiple local minimal).
+#'   \item We recommend method 1, because each iteration step is fast (quicker than method 2, which needs to compute a gradient (and Hessian?) in each step, involving multiple evaluations of the objective function) and its rate of convergence in our tests was very good (faster than method 3).
+#'     However, we have not much explored the relative sensitivity of the different methods towards the choice of starting value. Note that by choosing the quickest method (method 1) one can try out more different starting values of the procedure in the same amount of time.
+#'     Nevertheless, it may well be that method 2 or 3 or the alternative method described above perform better in certain situations.
+#' }
+#'
+#' @references For a description of the model and the least squares estimator see e.g. Bai (2009, "Panel data models with interactive fixed effects"), or Moon and Weidner (2015, Dynamic Linear Panel Regression Models with Interactive Fixed Effects; 2015, Linear Regression for Panel with Unknown Number of Factors as Interactive Fixed Effects)
+#'
+#' @param Y \eqn{N \times T} matrix of outcomes, where we assume a balanced panel, i.e. all elements of \code{Y} are known
+#' @param X \eqn{K \times N \times T} tensor of regressors, where we assume a balanced panel, i.e. all elements of \code{X} are known
+#' @param R A positive integer, indicates the number of interactive fixed effects in the estimation
+#' @param report (Optional) Whether or not to report the progress. \code{"silent"} has the program running silently; \code{"report"} has the program reporting what it is doing
+#' @param precision_beta (Optional) Defines stopping criteria fornumerical optimization, namely optimization is stopped when difference in beta relative to previous opimtization step is smaller than \code{"precision_beta"} (uniformly over all \eqn{K} components of beta).
+#'   Note that the actual precision in beta will typically be lower than precision_beta, depending on the convergence rate of the procedure.
+#' @param method (Optional) Optimization method option of choice. Options include \code{"m1"} and \code{"m3"}
+#' @param start (Optional) \eqn{K \times 1} vector, first starting value fornumerical optimization
+#' @param repMIN (Optional) Minimal number, which is a positive integer, of runs of optimization with different starting point
+#' @param repMAX (Optional) Maximal number, which is a positive integer, of runs of optimization (in case numerical optimization doesn't terminate properly, we do multiple runs even for \code{repMIN = 1})
+#' @param M1 (Optional) A positive integer, bandwidth forbias correction fordynamic bias (bcorr1), \code{M1} is the number of lags of correlation between regressors and errors that is corrected forin dynamic bias correction
+#' @param M2 (Optional) A non-negative integer, bandwidth forbias correction fortime-serial correlation (\code{bcorr3}), \code{M2 = 0} only corrects fortime-series heteroscedasticity, while \code{M2 > 0} corrects fortime-correlation in erros up to lag \code{M2}
+#'
+#' @return A list of results, where
+#' \itemize{
+#'   \item \code{beta} is the parameter estimate
+#'   \item \code{exitflag = 1} ifiteration algorithm properly converged at optimal beta, and \code{exitflag = -1} ifiteration algorithm did not properly converge at optimal beta
+#'   \item \code{lambda} is the estimate forfactor loading
+#'   \item \code{f} is the estimate forfactors
+#'   \item \code{Vbeta1,2,3} are estimated variance-covariance matrices of beta, assuming
+#'     \enumerate{
+#'       \item homoscedasticity of errors in both dimensions
+#'       \item heteroscedasticity of errors in both dimensions
+#'       \item allowing fortime-serial correlation up to lag M2 (i.e. ifM2 == 0, then Vbeta2 == Vbeta3)
+#'     }
+#'   \item \code{bcorr1,2,3} are estimates forthe three different bias components (needs to be subtracted from beta to correct forthe bias), where
+#'     \enumerate{
+#'       \item is bias due to pre-determined regressors
+#'       \item is bias due to cross-sectional heteroscedasticity of errors
+#'       \item is bias due to time-serial heteroscedasticity and time-serial correlation of errors
+#'     }
+#' }
+#'
+#' @note
+#' We assume that all provided input parameters have values and dimensions as described above.
+#' The program could be impoved by checking that this is indeed the case.
+#'
+#' @export
+
+
+LS_factor <- function(Y, X, R, report, precision_beta, method, start, repMIN, repMAX, M1, M2) {
+  # ========================================
+  # Check ifinputs are valid
+  # ========================================
+  if(!(("array" %in% class(Y)) & length(dim(Y)) == 2)) {
+    stop("Format of input Y is incorrect")
+  }
+  if(!("array" %in% class(X) & length(dim(X)) == 3)) {
+    stop("Format of input X is incorrect")
+  }
+  if(!("numeric" %in% class(R) & length(R) == 1)) {
+    stop("Format of input R is incorrect")
+  }
+  # ========================================
+  # Setting parameter
+  # ========================================
+  K <- dim(X)[1]  # number of regressors
+  N <- dim(X)[2]  # cross-sectional dimension
+  T <- dim(X)[3]  # time-serial dimension
+  # ===
+  # Input parameters that are not provided are given default parameters as follows:
+  if(missing(report)) {
+    # default choice is to report what is going on
+    report <- "report"
+  }
+  if(missing(precision_beta)) {
+    precision_beta <- 10^(-8)
+  }
+  if(missing(method)) {
+    # default computation method is Method 1 described above
+    method <- "m1"
+  }
+  if(missing(start)) {
+    start <- rep(0, K)
+  }
+  if(missing(repMIN)) {
+    repMIN <- 30
+  }
+  if(missing(repMAX)) {
+    repMAX <- 10*repMIN
+  }
+  if(missing(M1)) {
+    M1 <- 1
+  }
+  if(missing(M2)) {
+    M2 <- 0
+  }
+  # ===
+  # ifN<T we permute N and T in order to simplify computation of
+  # eigenvectors and eigenvalues (we only solve the eigenvalue
+  # problems forTxT matrices and we make sure that T<=N)
+  trans <- 0
+  if(N < T) {
+    trans <- 1  # dummy variable to remember that we exchanged N and T dims.
+    NN <- N
+    N <- T
+    T <- NN
+    Y <- t(Y)
+    X <- aperm(X, c(1, 3, 2))
+  }
+  # ========================================
+  # Numerical optimization to obtain beta
+  # ========================================
+  beta <- matrix(Inf, nrow = length(start), ncol = 1)   # best beta found so far
+  obj0 <- Inf    # objective function at optimal beta found so far
+  count <- 0     # how many minimization runs properly converged so far
+  exitflag <- -1 # no proper solution found, yet
+  # ===
+  for(i in 1:repMAX) {
+    if(count < repMIN) {
+      # Choose starting value foroptimization
+      if(i == 1) {
+        st <- matrix(start, ncol = 1)  # first starting value is given by user (or =0 by default)
+      } else {
+        st <- matrix(start, ncol = 1) + 10 * matrix(stats::rnorm(length(start) * 1), nrow = length(start), ncol = 1) # choose random starting values up from second run
+      }
+      # ===
+      # Report to user
+      if(report == "report") {
+        cat(paste0("    Program LS_factor now starting optimization run number: ", i, " / ", repMAX, "\n",
+                   "    number of optimization runs that converged so far: ", count, " / ", repMIN, "\n",
+                   "    starting value forcurrent run = ", toString(st), "\n"))
+      }
+      # ===
+      # Run actual optimization over beta
+      if(method == "m1") {
+        list <- minimize_obj_method1(Y, X, R, st, precision_beta)
+        para <- list$beta
+        obj <- list$obj
+        ef <- list$ef
+      } else if(method == "m2") {
+        # Method M2 is not implemented. Use M1 instead.
+        cat(paste0("    Method M2 is not implemented. Use M1 instead.\n"))
+        list <- minimize_obj_method1(Y, X, R, st, precision_beta)
+        para <- list$beta
+        obj <- list$obj
+        ef <- list$ef
+      } else if(method == "m3") {
+        list <- minimize_obj_method3(Y, X, R, st, precision_beta)
+        para <- list$beta
+        obj <- list$obj
+        ef <- list$ef
+      }
+      # ===
+      # Report to user
+      if(report == "report") {
+        if(ef > 0) {
+          cat("    Method ", method, " converged at beta = ", toString(para), "\n")
+        } else {
+          cat("    Method ", method, " did NOT converge. Stopped at beta = ", toString(para), "\n")
+        }
+        if(obj < obj0) {
+          cat("    Final Objective = ", obj, " ==> NEW BEST MINIMUM FOUND\n\n")
+        } else {
+          cat("    Final Objective = ", obj, " > Best Objective so Far = ", obj0, "\n\n")
+        }
+      }
+      # ===
+      # Update estimator, in case better solution found
+      if(obj < obj0) {
+        obj0 <- obj
+        beta <- para # new "global minimum" found
+        if(ef > 0) {
+          # optimal beta corresponds to point where iteration algorithm properly converged
+          exitflag <- 1
+        } else {
+          exitflag <- -1
+        }
+      }
+      # ===
+      # Update counter of "good" solutions
+      if(ef > 0) {
+        # ifmethod properly converged, then count how many "good" solutions found
+        count <- count + 1
+      }
+    }
+  }
+  # end of calculation of beta-estimator
+  # ========================================
+  # Calculate lambda and f forthe optimal beta
+  # ========================================
+  res1 <- Y
+  for(k in 1:K) {
+    res1 <- res1 - beta[k] * X[k, , ]
+  }
+  eigen_decomp <- eigen(t(res1) %*% res1)
+  V <- eigen_decomp$vectors
+  D <- eigen_decomp$values
+  Dsort <- sort(eigen_decomp$values)
+  Ind <- order(eigen_decomp$values)
+  f <- as.matrix(V[ , Ind[(T-R+1):T]]) # eigenvectors corresponding to largest eigenvalues
+  for(r in 1:R) {
+    f[ , r] <- f [ ,r] / norm(f[ , r], type = "2")
+    if(mean(f[ , r]) < 0) {
+      f[ , r] <- -f[ , r]
+    }
+  }
+  lambda <- res1 %*% f
+  res <- res1 - lambda %*% t(f) # estimate forthe residuals
+  # ===
+  # need to undo the interchange of N and T now
+  if(trans == 1) {
+    save <- lambda
+    lambda <- f
+    f <- save
+    res <- t(res)
+    NN <- N
+    N <- T
+    T <- NN
+    Y <- t(Y)
+    X <- aperm(X, c(1, 3, 2))
+  }
+  # ========================================
+  # Calculate variance-covariance matrix of beta
+  # ========================================
+  Pf <- f %*% solve(t(f) %*% f) %*% t(f)
+  Plambda <- lambda %*% solve(t(lambda) %*% lambda) %*% t(lambda)
+  Mf <- diag(T) - Pf
+  Mlambda <- diag(N) - Plambda
+  W <- matrix(0, nrow = K, ncol = K)
+  Omega <- matrix(0, nrow = K, ncol = K)
+  Omega2 <- matrix(0, nrow = K, ncol = K)
+  for(k1 in 1:K) {
+    for(k2 in 1:K) {
+      Xk1 <- Mlambda %*% X[k1, , ] %*% Mf
+      Xk2 <- Mlambda %*% X[k1, , ] %*% Mf
+      W[k1, k2] <- 1/N/T * sum(diag(Mf %*% t(X[k1, , ]) %*% Mlambda %*% X[k2, , ])) # Hessian
+      Omega[k1, k2] <- 1/N/T * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
+      Omega2[k1, k2] <- 1/N/T * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1)))
+    }
+  }
+  sigma2 <- sum(diag(t(res) %*% res)) / N / T
+  Vbeta1 <- solve(W) * sigma2 / N / T
+  Vbeta2 <- solve(W) %*% Omega %*% solve(W) / N / T
+  Vbeta3 <- solve(W) %*% Omega2 %*% solve(W) / N / T
+  # ========================================
+  # Calculate bias estimators
+  # ========================================
+  B1 <- c()
+  B2 <- c()
+  B3 <- c()
+  for(k in 1:K) {
+    XX <- X[k, , ]
+    B1[k] <- 1/sqrt(N*T) * sum(diag(Pf %*% trunc(t(res) %*% XX, 0, M1+1)))
+    B2[k] <- 1/sqrt(N*T) * sum(diag(t(XX) %*% Mlambda %*% trunc(res %*% t(res), 1, 1) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
+    B3[k] <- 1/sqrt(N*T) * sum(diag(trunc(t(res) %*% res, M2+1, M2+1) %*% Mf %*% t(XX) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
+  }
+  den <- matrix(0, K, K)
+  for(k1 in 1:K) {
+    for(k2 in 1:K) {
+      den[k1, k2] <- 1/N/T * sum(diag(Mf %*% t(X[k1, , ]) %*% Mlambda %*% X[k2, , ]))
+    }
+  }
+  bcorr1 <- -solve(den) %*% B1/sqrt(N*T)
+  bcorr2 <- -solve(den) %*% B2/sqrt(N*T)
+  bcorr3 <- -solve(den) %*% B3/sqrt(N*T)
+  # ========================================
+  # Output results
+  # ========================================
+  return(list(beta = beta, exitflag = exitflag, lambda = lambda, f = f,
+              Vbeta1 = Vbeta1, Vbeta2 = Vbeta2, Vbeta3 = Vbeta3,
+              bcorr1 = bcorr1, bcorr2 = bcorr2, bcorr3 = bcorr3))
+}
+
+
+
