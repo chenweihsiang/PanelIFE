@@ -12,17 +12,22 @@ devtools::install_github("chenweihsiang/PanelIFE")
 
 ### Examples
 
-The following example considers the method of least squares estimation of linear panel data models with interactive fixed effects (Bai, 2009; Moon and Weidner, 2017):
+First, the following code generates the sample data:
 
 ```R
 library(PanelIFE)
 # Generate sample data with number of factors equals 2
 dt <- sample_data(N = 100, T = 20, R = 2, kappa = c(0.5, 0.3))
+```
+
+The following example considers the method of least squares estimation of linear panel data models with interactive fixed effects (Bai, 2009; Moon and Weidner, 2017):
+
+```R
 # Estimate the linear panel data model with interactive fixed effects
 res <- ls_factor(Y = dt$Y, X = dt$X, R = dt$R, report = "silent",
                  precision_beta = 10^(-8), method = "m1",
                  start = c(0), repMIN = 3, repMAX = 10, M1 = 2, M2 = 2)
-# Summarize and print the result
+# Summarize and print the results
 sum_res <- summary(res)
 print(sum_res)
 ```
@@ -30,13 +35,10 @@ print(sum_res)
 The following example considers the method of robust estimation and inference in panels with interactive fixed effects which can accommodate weak factors (Armstrong, Weidner, and Zeleneev, 2023):
 
 ```R
-library(PanelIFE)
-# Generate sample data with number of factors equals 2
-dt <- sample_data(N = 100, T = 20, R = 2, kappa = c(0.5, 0.3))
 # Estimate the linear panel data model with interactive fixed effects
 res <- honest_weak_factors(Y = dt$Y, X = dt$X, R = dt$R,
                            Gamma_LS = NULL, alpha = 0.05)
-# Summarize and print the result
+# Summarize and print the results
 sum_res <- summary(res)
 print(sum_res)
 ```
