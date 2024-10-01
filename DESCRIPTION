@@ -15,7 +15,7 @@ Author: Timothy B. Armstrong [aut]
         Martin Weidner [aut]
  	Andrei Zeleneev [aut],
 Maintainer: Chen-Wei Hsiang <chen-wei.hsiang.21@ucl.ac.uk>
-Description: This package provides tools for estimation and inference for a regression coefficient in panel data with interactive fixed effects (i.e., with a factor structure), and either with strong factor or weak factor.
+Description: This package provides tools for estimation and inference for a regression coefficient in panel data with interactive fixed effects (i.e., with a factor structure), and either with strong factors or weak factors.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: 
