@@ -7,7 +7,7 @@ This package implements the estimation and inference procedure for panel data wi
 The latest development version can be installed from the Github source using `devtools` package in R:
 
 ```R
-devtools::install_github("chenweihsiang/PanelIFE")
+remotes::install_github("chenweihsiang/PanelIFE")
 ```
 
 ### Examples
