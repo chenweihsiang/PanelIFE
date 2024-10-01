@@ -1,4 +1,4 @@
-# Panel with Interactive Fixed Effects
+# Panel Data Model with Interactive Fixed Effects
 
 This package implements the estimation and inference procedure for panel data with interactive fixed effects. This package provides two different method for estimation: one is the commonly used linear panel data model estimation procedure, and another one is the bias-aware estimation procedure that allows weak factors.
 
