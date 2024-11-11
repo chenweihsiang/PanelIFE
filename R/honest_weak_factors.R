@@ -73,7 +73,7 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustere
                                 lambda_known = NA, f_known = NA,
                                 itermax = 75, reltol = 10^(-6)) {
   # ========================================
-  # Project out all known factors and loadings
+  # Setting parameters and project out all known factors and loadings
   # ========================================
   if(!("array" %in% class(lambda_known) | "logical" %in% class(lambda_known))) {
     stop("Format of input 'lambda_known' is incorrect")
@@ -82,14 +82,14 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustere
     stop("Format of input 'f_known' is incorrect")
   }
   # ===
-  if(class(lambda_known) == "logical") {
+  if("logical" %in% class(lambda_known)) {
     if(is.na(lambda_known)) {
       lambda_known <- matrix(NA, nrow = nrow(Y), ncol = 0) # Default choice is no known factor loadings
     } else {
       stop("Format of input 'lambda_known' is incorrect")
     }
   }
-  if(class(f_known) == "logical") {
+  if("logical" %in% class(f_known)) {
     if(is.na(f_known)) {
       f_known <- matrix(NA, nrow = ncol(Y), ncol = 0) # Default choice is no known factors
     } else {
@@ -103,6 +103,11 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustere
   if(dim(f_known)[1] != ncol(Y)) {
     stop("The dimension of input 'f_known' is incorrect")
   }
+  # ===
+  N <- dim(Y)[1]
+  T <- dim(Y)[2]
+  K <- dim(X)[1]
+  b <- 2 * R * (sqrt(N) + sqrt(T))
   # ===
   Rex1 <- dim(lambda_known)[2]
   Rex2 <- dim(f_known)[2]
@@ -124,13 +129,6 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustere
       X[k, , ] <- t(t(xx) - f_known %*% pracma::mldivide(f_known, t(xx)))
     }
   }
-  # ========================================
-  # Setting parameters
-  # ========================================
-  N <- dim(Y)[1]
-  T <- dim(Y)[2]
-  K <- dim(X)[1]
-  b <- 2 * R * (sqrt(N) + sqrt(T))
   # ========================================
   # Compute the optimal weights
   # ========================================
