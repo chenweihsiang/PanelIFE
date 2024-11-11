@@ -4,29 +4,52 @@
 \alias{honest_weak_factors}
 \title{Robust Estimation and Inference in Panels with Interactive Fixed Effects}
 \usage{
-honest_weak_factors(Y, X, R, Gamma_LS = NULL, alpha = 0.05)
+honest_weak_factors(
+  Y,
+  X,
+  R,
+  Gamma_LS = NULL,
+  alpha = 0.05,
+  clustered_se = FALSE,
+  lambda_known = NA,
+  f_known = NA,
+  itermax = 75,
+  reltol = 10^(-6)
+)
 }
 \arguments{
 \item{Y}{\eqn{N \times T} matrix of outcomes}
 
 \item{X}{\eqn{K \times N \times T} tensor of regressors}
 
-\item{R}{A positive integer, indicates the number of interactive fixed effects in the estimation}
+\item{R}{A positive integer, indicates the number of interactive fixed effects in the estimation. Note that this number does not include the known factors and loadings defined below}
 
 \item{Gamma_LS}{(Optional) A preliminary LS estimate of the matrix of fixed effects; it will be computed if not provided}
 
 \item{alpha}{(Optional) It determines the \code{1 - alpha} coverage of the constructed confidence interval, where default is set to \code{alpha = 0.05}}
+
+\item{clustered_se}{(Optional) Whether or not performing clustered standard error, where default is set to \code{clustered_se = FALSE}}
+
+\item{lambda_known}{(Optional) \eqn{N \times Rex1} matrix of known factor loadings, e.g., \code{lambda_known = matrix(rep(1, N), nrow = N, ncol = 1)} to control standard time dummies.
+Default is set to \code{lambda_known = NA} (or equivalently \code{matrix(NA, nrow = N, ncol = 0)}), i.e., there is no known factor loadings}
+
+\item{f_known}{(Optional) \eqn{T \times Rex2} matrix of known factor, e.g., \code{f_known = matrix(rep(1, T), nrow = T, ncol = 1)} to control standard individual specific fixed effects.
+Default is set to \code{f_known = NA} (or equivalently \code{matrix(NA, nrow = T, ncol = 0)}), i.e., there is no known factor}
+
+\item{itermax}{(Optional) Maximum iteration allowed while optimizing for the weights A, where default is set to \code{itermax = 50} for faster computation}
+
+\item{reltol}{(Optional) Relative convergence tolerance for the optimization algorithm to stop if it is unable to reduce the value by \code{reltol * (abs(val) + reltol)} after \code{0.75 * itermax} steps.
+, where default is set to \code{reltol = 10^(-4)} for faster computation}
 }
 \value{
 A list of results, where
 \itemize{
 \item \code{beta} is the point estimate
 \item \code{bias} is the worst-case bias
-\item \code{LB} is the lower bound of the \code{1 - alpha} confidence interval
-\item \code{UB} is the upper bound of the \code{1 - alpha} confidence interval
-\item \code{LB_unadj} is the lower bound of the \code{1 - alpha} confidence interval without bias correction
-\item \code{UB_unadj} is the upper bound of the \code{1 - alpha} confidence interval without bias correction
+\item \code{LB} are the lower bounds of the \code{1 - alpha} confidence intervals, from number of weak factors being 0 to R
+\item \code{UB} are the upper bounds of the \code{1 - alpha} confidence intervals, from number of weak factors being 0 to R
 \item \code{A} is the matrix of weights
+\item \code{parameter} is the list of input parameters, including \code{Gamma_LS}, \code{alpha}, and \code{clustered_se}
 }
 }
 \description{

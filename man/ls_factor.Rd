@@ -8,6 +8,8 @@ ls_factor(
   Y,
   X,
   R,
+  lambda_known,
+  f_known,
   report,
   precision_beta,
   method,
@@ -23,7 +25,13 @@ ls_factor(
 
 \item{X}{\eqn{K \times N \times T} tensor of regressors, where we assume a balanced panel, i.e. all elements of \code{X} are known}
 
-\item{R}{A positive integer, indicates the number of interactive fixed effects in the estimation}
+\item{R}{A positive integer, indicates the number of interactive fixed effects in the estimation; this \code{R} does not include the number of known factors and loadings}
+
+\item{lambda_known}{(Optional) \eqn{N \times Rex1} matrix of known factor loadings, e.g., \code{lambda_known = matrix(rep(1, N), nrow = N, ncol = 1)} to control standard time dummies.
+Default is set to \code{lambda_known = matrix(NA, nrow = N, ncol = 0)}, i.e., there is no known factor loadings}
+
+\item{f_known}{(Optional) \eqn{T \times Rex2} matrix of known factor, e.g., \code{f_known = matrix(rep(1, T), nrow = T, ncol = 1)} to control standard individual specific fixed effects.
+Default is set to \code{f_known = matrix(NA, nrow = T, ncol = 0)}, i.e., there is no known factor}
 
 \item{report}{(Optional) Whether or not to report the progress. \code{"silent"} has the program running silently; \code{"report"} has the program reporting what it is doing}
 
@@ -61,6 +69,7 @@ A list of results, where
 \item is bias due to cross-sectional heteroscedasticity of errors
 \item is bias due to time-serial heteroscedasticity and time-serial correlation of errors
 }
+\item \code{parameter} is the list of input parameters, including \code{Gamma_LS}, \code{alpha}, and \code{clustered_se}
 }
 }
 \description{
@@ -113,5 +122,5 @@ print(sum_res)
 
 }
 \references{
-For a description of the model and the least squares estimator see e.g. Bai (2009, "Panel data models with interactive fixed effects"), or Moon and Weidner (2015, "Dynamic Linear Panel Regression Models with Interactive Fixed Effects"; 2015, "Linear Regression for Panel with Unknown Number of Factors as Interactive Fixed Effects")
+For a description of the model and the least squares estimator see e.g. Bai (2009, "Panel data models with interactive fixed effects"), or Moon and Weidner (2017, "Dynamic Linear Panel Regression Models with Interactive Fixed Effects"; 2015, "Linear Regression for Panel with Unknown Number of Factors as Interactive Fixed Effects")
 }

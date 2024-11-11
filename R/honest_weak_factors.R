@@ -34,19 +34,26 @@
 #'
 #' @param Y \eqn{N \times T} matrix of outcomes
 #' @param X \eqn{K \times N \times T} tensor of regressors
-#' @param R A positive integer, indicates the number of interactive fixed effects in the estimation
+#' @param R A positive integer, indicates the number of interactive fixed effects in the estimation. Note that this number does not include the known factors and loadings defined below
 #' @param Gamma_LS (Optional) A preliminary LS estimate of the matrix of fixed effects; it will be computed if not provided
 #' @param alpha (Optional) It determines the \code{1 - alpha} coverage of the constructed confidence interval, where default is set to \code{alpha = 0.05}
+#' @param clustered_se (Optional) Whether or not performing clustered standard error, where default is set to \code{clustered_se = FALSE}
+#' @param lambda_known (Optional) \eqn{N \times Rex1} matrix of known factor loadings, e.g., \code{lambda_known = matrix(rep(1, N), nrow = N, ncol = 1)} to control standard time dummies.
+#'   Default is set to \code{lambda_known = NA} (or equivalently \code{matrix(NA, nrow = N, ncol = 0)}), i.e., there is no known factor loadings
+#' @param f_known (Optional) \eqn{T \times Rex2} matrix of known factor, e.g., \code{f_known = matrix(rep(1, T), nrow = T, ncol = 1)} to control standard individual specific fixed effects.
+#'   Default is set to \code{f_known = NA} (or equivalently \code{matrix(NA, nrow = T, ncol = 0)}), i.e., there is no known factor
+#' @param itermax (Optional) Maximum iteration allowed while optimizing for the weights A, where default is set to \code{itermax = 50} for faster computation
+#' @param reltol (Optional) Relative convergence tolerance for the optimization algorithm to stop if it is unable to reduce the value by \code{reltol * (abs(val) + reltol)} after \code{0.75 * itermax} steps.
+#' , where default is set to \code{reltol = 10^(-4)} for faster computation
 #'
 #' @return A list of results, where
 #' \itemize{
 #'   \item \code{beta} is the point estimate
 #'   \item \code{bias} is the worst-case bias
-#'   \item \code{LB} is the lower bound of the \code{1 - alpha} confidence interval
-#'   \item \code{UB} is the upper bound of the \code{1 - alpha} confidence interval
-#'   \item \code{LB_unadj} is the lower bound of the \code{1 - alpha} confidence interval without bias correction
-#'   \item \code{UB_unadj} is the upper bound of the \code{1 - alpha} confidence interval without bias correction
+#'   \item \code{LB} are the lower bounds of the \code{1 - alpha} confidence intervals, from number of weak factors being 0 to R
+#'   \item \code{UB} are the upper bounds of the \code{1 - alpha} confidence intervals, from number of weak factors being 0 to R
 #'   \item \code{A} is the matrix of weights
+#'   \item \code{parameter} is the list of input parameters, including \code{Gamma_LS}, \code{alpha}, and \code{clustered_se}
 #' }
 #'
 #' @note
@@ -62,9 +69,63 @@
 #' @export
 
 
-honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05) {
+honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustered_se = FALSE,
+                                lambda_known = NA, f_known = NA,
+                                itermax = 75, reltol = 10^(-6)) {
   # ========================================
-  # Setting parameter
+  # Project out all known factors and loadings
+  # ========================================
+  if(!("array" %in% class(lambda_known) | "logical" %in% class(lambda_known))) {
+    stop("Format of input 'lambda_known' is incorrect")
+  }
+  if(!("array" %in% class(f_known) | "logical" %in% class(f_known))) {
+    stop("Format of input 'f_known' is incorrect")
+  }
+  # ===
+  if(class(lambda_known) == "logical") {
+    if(is.na(lambda_known)) {
+      lambda_known <- matrix(NA, nrow = nrow(Y), ncol = 0) # Default choice is no known factor loadings
+    } else {
+      stop("Format of input 'lambda_known' is incorrect")
+    }
+  }
+  if(class(f_known) == "logical") {
+    if(is.na(f_known)) {
+      f_known <- matrix(NA, nrow = ncol(Y), ncol = 0) # Default choice is no known factors
+    } else {
+      stop("Format of input 'f_known' is incorrect")
+    }
+  }
+  # ===
+  if(dim(lambda_known)[1] != nrow(Y)) {
+    stop("The dimension of input 'lambda_known' is incorrect")
+  }
+  if(dim(f_known)[1] != ncol(Y)) {
+    stop("The dimension of input 'f_known' is incorrect")
+  }
+  # ===
+  Rex1 <- dim(lambda_known)[2]
+  Rex2 <- dim(f_known)[2]
+  # ===
+  # Project out (generalized within transformation) all known factor loadings
+  if(dim(lambda_known)[2] > 0) {
+    Y <- Y - lambda_known %*% pracma::mldivide(lambda_known, Y)
+    for(k in 1:K) {
+      xx <- X[k, , ]
+      X[k, , ] <- xx - lambda_known %*% pracma::mldivide(lambda_known, xx)
+    }
+  }
+  # ===
+  # Project out (generalized within transformation) all known factors
+  if(dim(f_known)[2] > 0) {
+    Y <- t(t(Y) - f_known %*% pracma::mldivide(f_known, t(Y)))
+    for(k in 1:K) {
+      xx <- X[k, , ]
+      X[k, , ] <- t(t(xx) - f_known %*% pracma::mldivide(f_known, t(xx)))
+    }
+  }
+  # ========================================
+  # Setting parameters
   # ========================================
   N <- dim(Y)[1]
   T <- dim(Y)[2]
@@ -93,9 +154,9 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05) {
     }
     # ===
     # Nonlinear global optimization through "RcppDE" package
-    mu_mse <- RcppDE::DEoptim(fn = MSE_crit_fn, lower = 10^(-4), upper = max(diag(S)),
-                              RcppDE::DEoptim.control(trace = FALSE, itermax = 50, NP = 10,
-                                                      steptol = 20, reltol = 10^(-4)),
+    mu_mse <- RcppDE::DEoptim(fn = MSE_crit_fn, lower = min(diag(S)), upper = max(diag(S)),
+                              RcppDE::DEoptim.control(trace = FALSE, itermax = itermax, NP = 10 * length(max(diag(S))),
+                                                      steptol = round(itermax*0.75, 0), reltol = reltol),
                               X_tmp = X_tmp, ZZ = ZZ, b = b, V = V, S = S, W = W)
     mse[k] <- as.numeric(mu_mse$optim$bestmem)
     A[k, , ] <- compute_mse(X = X_tmp, ZZ = ZZ, mu = mse[k], b = b, V = V, S = S, W = W)$A
@@ -103,7 +164,7 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05) {
   # ========================================
   # Compute preliminary estimator
   # ========================================
-  if (is.null(Gamma_LS)) {
+  if(is.null(Gamma_LS)) {
     start_delta <- matrix(0, nrow = dim(X)[1], ncol = 1)
     LS_factor_res <- ls_factor(Y = Y, X = X, R = R,
                                report = "silent", precision_beta = 10^(-8), method = "m1",
@@ -116,9 +177,9 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05) {
   Y_tilde_LS <- Y - Gamma_LS
   delta_pre <- rep(0, K)
   Y_diff <- Y
-  for (k in 1:K) {
+  for(k in 1:K) {
     delta_pre[k] <- sum(A[k, , ] * Y_tilde_LS)
-    Y_diff <- Y - X[k, , ] * delta_pre[k]
+    Y_diff <- Y_diff - X[k, , ] * delta_pre[k] # Y_diff <- Y - X[k, , ] * delta_pre[k]
   }
   # ========================================
   # Compute the final estimate
@@ -132,31 +193,40 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05) {
   Gamma_pre <- matrix(V[ , 1:R], ncol = R) %*% matrix(S[1:R, 1:R], nrow = R, ncol = R) %*% t(matrix(W[ , 1:R], ncol = R))
   Y_tilde <- Y - Gamma_pre
   U <- Y_diff - Gamma_pre
-  C <- 2 * R * max(svd(U)$d)
-  # ===
+  # ========================================
+  # Loop from number of weak factors Rw = 0 to R
+  # ========================================
   beta <- rep(0, K)
-  bias <- rep(0, K)
   se <- rep(0, K)
-  LB <- rep(0, K)
-  UB <- rep(0, K)
-  LB_unadj <- rep(0, K)
-  UB_unadj <- rep(0, K)
-  # ===
-  for (k in 1:K) {
-    A_k <- A[k, , ]
-    beta[k] <- sum(A_k * Y_tilde)
-    bias[k] <- C * max(svd(A_k)$d)
-    se[k] <- sqrt(sum((A_k * U)^2))
-    LB[k] <- beta[k] - bias[k] - se[k] * stats::qnorm(1 - alpha / 2)
-    UB[k] <- beta[k] + bias[k] + se[k] * stats::qnorm(1 - alpha / 2)
-    LB_unadj[k] <- beta[k] - se[k] * stats::qnorm(1 - alpha / 2)
-    UB_unadj[k] <- beta[k] + se[k] * stats::qnorm(1 - alpha / 2)
+  bias <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  LB <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  UB <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  # LB_unadj <- rep(0, K)
+  # UB_unadj <- rep(0, K)
+  for(Rw in c(0:R)) {
+    C <- 2 * Rw * max(svd(U)$d) # Using Rw from this step
+    # ===
+    for (k in 1:K) {
+      A_k <- A[k, , ]
+      beta[k] <- sum(A_k * Y_tilde)
+      if(clustered_se == TRUE) {
+        se[k] <- sqrt(sum((rowSums(A_k * U))^2))
+      } else {
+        se[k] <- sqrt(sum((A_k * U)^2))
+      }
+      bias[Rw+1, k+1] <- C * max(svd(A_k)$d)
+      LB[Rw+1, k+1] <- beta[k] - bias[Rw+1, k+1] - se[k] * stats::qnorm(1 - alpha / 2)
+      UB[Rw+1, k+1] <- beta[k] + bias[Rw+1, k+1] + se[k] * stats::qnorm(1 - alpha / 2)
+      # LB_unadj[k] <- beta[k] - se[k] * stats::qnorm(1 - alpha / 2)
+      # UB_unadj[k] <- beta[k] + se[k] * stats::qnorm(1 - alpha / 2)
+    }
   }
   # ========================================
   # Output results
   # ========================================
-  return(structure(list(beta = beta, bias = bias, se = se, LB = LB, UB = UB,
-                        LB_unadj = LB_unadj, UB_unadj = UB_unadj, A = A),
+  return(structure(list(beta = beta, bias = bias, se = se,
+                        LB = LB, UB = UB, A = A,
+                        parameter = list(Gamma_LS = Gamma_LS, alpha = alpha, clustered_se = clustered_se)),
                    class = "honest_weak_factors"))
 
 }

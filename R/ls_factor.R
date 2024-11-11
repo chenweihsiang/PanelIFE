@@ -39,7 +39,11 @@
 #'
 #' @param Y \eqn{N \times T} matrix of outcomes, where we assume a balanced panel, i.e. all elements of \code{Y} are known
 #' @param X \eqn{K \times N \times T} tensor of regressors, where we assume a balanced panel, i.e. all elements of \code{X} are known
-#' @param R A positive integer, indicates the number of interactive fixed effects in the estimation
+#' @param R A positive integer, indicates the number of interactive fixed effects in the estimation; this \code{R} does not include the number of known factors and loadings
+#' @param lambda_known (Optional) \eqn{N \times Rex1} matrix of known factor loadings, e.g., \code{lambda_known = matrix(rep(1, N), nrow = N, ncol = 1)} to control standard time dummies.
+#'   Default is set to \code{lambda_known = matrix(NA, nrow = N, ncol = 0)}, i.e., there is no known factor loadings
+#' @param f_known (Optional) \eqn{T \times Rex2} matrix of known factor, e.g., \code{f_known = matrix(rep(1, T), nrow = T, ncol = 1)} to control standard individual specific fixed effects.
+#'   Default is set to \code{f_known = matrix(NA, nrow = T, ncol = 0)}, i.e., there is no known factor
 #' @param report (Optional) Whether or not to report the progress. \code{"silent"} has the program running silently; \code{"report"} has the program reporting what it is doing
 #' @param precision_beta (Optional) Defines stopping criteria for numerical optimization, namely optimization is stopped when difference in beta relative to previous opimtization step is smaller than \code{"precision_beta"} (uniformly over all \eqn{K} components of beta).
 #'   Note that the actual precision in beta will typically be lower than precision_beta, depending on the convergence rate of the procedure.
@@ -68,6 +72,7 @@
 #'       \item is bias due to cross-sectional heteroscedasticity of errors
 #'       \item is bias due to time-serial heteroscedasticity and time-serial correlation of errors
 #'     }
+#'   \item \code{parameter} is the list of input parameters, including \code{Gamma_LS}, \code{alpha}, and \code{clustered_se}
 #' }
 #'
 #' @note
@@ -85,7 +90,41 @@
 #' @export
 
 
-ls_factor <- function(Y, X, R, report, precision_beta, method, start, repMIN, repMAX, M1, M2) {
+ls_factor <- function(Y, X, R, lambda_known, f_known, report, precision_beta, method, start, repMIN, repMAX, M1, M2) {
+  # ========================================
+  # Set up default parameters
+  # ========================================
+  # Input parameters that are not provided are given default parameters as follows
+  if(missing(lambda_known)) {
+    lambda_known <- matrix(NA, nrow = nrow(Y), ncol = 0) # Default choice is no known factor loadings
+  }
+  if(missing(f_known)) {
+    f_known <- matrix(NA, nrow = ncol(Y), ncol = 0) # Default choice is no known factors
+  }
+  if(missing(report)) {
+    report <- "report" # Default choice is to report the progress
+  }
+  if(missing(precision_beta)) {
+    precision_beta <- 10^(-8)
+  }
+  if(missing(method)) {
+    method <- "m1" # Default computation method is Method 1 described above
+  }
+  if(missing(start)) {
+    start <- rep(0, K)
+  }
+  if(missing(repMIN)) {
+    repMIN <- 30
+  }
+  if(missing(repMAX)) {
+    repMAX <- 10 * repMIN
+  }
+  if(missing(M1)) {
+    M1 <- 1
+  }
+  if(missing(M2)) {
+    M2 <- 0
+  }
   # ========================================
   # Check if inputs are valid
   # ========================================
@@ -97,13 +136,21 @@ ls_factor <- function(Y, X, R, report, precision_beta, method, start, repMIN, re
     stop("Format of input 'X' is incorrect")
   }
   # ===
-  if(!("numeric" %in% class(R) & length(R) == 1)) {
+  if(!(("numeric" %in% class(R) | "integer" %in% class(R)) & length(R) == 1)) {
       stop("Format of input 'R' is incorrect")
   }
   if("numeric" %in% class(R)) {
     if(!(R %% 1 == 0)) {
       stop("Format of input 'R' is incorrect")
     }
+  }
+  # ===
+  if(!("array" %in% class(lambda_known) & length(dim(lambda_known)) == 2)) {
+    stop("Format of input 'lambda_known' is incorrect")
+  }
+  # ===
+  if(!("array" %in% class(f_known) & length(dim(f_known)) == 2)) {
+    stop("Format of input 'f_known' is incorrect")
   }
   # ===
   if(!("character" %in% class(report) & report %in% c("silent", "report"))) {
@@ -164,30 +211,27 @@ ls_factor <- function(Y, X, R, report, precision_beta, method, start, repMIN, re
   N <- dim(X)[2]  # cross-sectional dimension
   T <- dim(X)[3]  # time-serial dimension
   # ===
-  # Input parameters that are not provided are given default parameters as follows:
-  if(missing(report)) {
-    report <- "report" # Default choice is to report the progress
+  Rex1 <- dim(lambda_known)[2]
+  Rex2 <- dim(f_known)[2]
+  # ========================================
+  # Project out all known factors and loadings
+  # ========================================
+  # Project out (generalized within transformation) all known factor loadings
+  if(dim(lambda_known)[2] > 0) {
+    Y <- Y - lambda_known %*% pracma::mldivide(lambda_known, Y)
+    for(k in 1:K) {
+      xx <- X[k, , ]
+      X[k, , ] <- xx - lambda_known %*% pracma::mldivide(lambda_known, xx)
+    }
   }
-  if(missing(precision_beta)) {
-    precision_beta <- 10^(-8)
-  }
-  if(missing(method)) {
-    method <- "m1" # Default computation method is Method 1 described above
-  }
-  if(missing(start)) {
-    start <- rep(0, K)
-  }
-  if(missing(repMIN)) {
-    repMIN <- 30
-  }
-  if(missing(repMAX)) {
-    repMAX <- 10 * repMIN
-  }
-  if(missing(M1)) {
-    M1 <- 1
-  }
-  if(missing(M2)) {
-    M2 <- 0
+  # ===
+  # Project out (generalized within transformation) all known factors
+  if(dim(f_known)[2] > 0) {
+    Y <- t(t(Y) - f_known %*% pracma::mldivide(f_known, t(Y)))
+    for(k in 1:K) {
+      xx <- X[k, , ]
+      X[k, , ] <- t(t(xx) - f_known %*% pracma::mldivide(f_known, t(xx)))
+    }
   }
   # ===
   # If N < T, we permute N and T in order to simplify computation of
@@ -312,54 +356,56 @@ ls_factor <- function(Y, X, R, report, precision_beta, method, start, repMIN, re
   # ========================================
   # Calculate variance-covariance matrix of beta
   # ========================================
-  Pf <- f %*% solve(t(f) %*% f) %*% t(f)
-  Plambda <- lambda %*% solve(t(lambda) %*% lambda) %*% t(lambda)
-  Mf <- diag(T) - Pf
-  Mlambda <- diag(N) - Plambda
-  W <- matrix(0, nrow = K, ncol = K)
-  Omega <- matrix(0, nrow = K, ncol = K)
-  Omega2 <- matrix(0, nrow = K, ncol = K)
-  for(k1 in 1:K) {
-    for(k2 in 1:K) {
-      Xk1 <- Mlambda %*% X[k1, , ] %*% Mf
-      Xk2 <- Mlambda %*% X[k1, , ] %*% Mf
-      W[k1, k2] <- 1/N/T * sum(diag(Mf %*% t(X[k1, , ]) %*% Mlambda %*% X[k2, , ])) # Hessian
-      Omega[k1, k2] <- 1/N/T * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
-      Omega2[k1, k2] <- 1/N/T * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1)))
+  f_all <- cbind(f, f_known)
+  lambda_all <- cbind(lambda, lambda_known)
+  Pf_all <- f_all %*% solve(t(f_all) %*% f_all) %*% t(f_all)
+  Plambda_all <- lambda_all %*% solve(t(lambda_all) %*% lambda_all) %*% t(lambda_all)
+  Mf_all <- diag(T) - Pf_all
+  Mlambda_all <- diag(N) - Plambda_all
+  W <- matrix(0, K, K)
+  Omega <- matrix(0, K, K)
+  Omega2 <- matrix(0, K, K)
+  for (k1 in 1:K) {
+    for (k2 in 1:K) {
+      Xk1 <- Mlambda_all %*% X[k1, , ] %*% Mf_all
+      Xk2 <- Mlambda_all %*% X[k2, , ] %*% Mf_all
+      W[k1, k2] <- (1 / (N * T)) * sum(diag(Mf_all %*% t(X[k1, , ]) %*% Mlambda_all %*% X[k2, , ])) # Hessian
+      Omega[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
+      Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(trunc(t(res * Xk1) %*% (res * Xk2), M2 + 1, M2 + 1))
+      # Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1))) # Old and incorrect code
     }
   }
-  sigma2 <- sum(diag(t(res) %*% res)) / N / T
-  Vbeta1 <- solve(W) * sigma2 / N / T
-  Vbeta2 <- solve(W) %*% Omega %*% solve(W) / N / T
-  Vbeta3 <- solve(W) %*% Omega2 %*% solve(W) / N / T
+  sigma2 <- sum(diag(t(res) %*% res)) / ((N-R-Rex1) * (T-R-Rex2))
+  Vbeta1 <- solve(W) * sigma2 / (N * T)
+  Vbeta2 <- solve(W) %*% Omega %*% solve(W) / (N * T)
+  Vbeta3 <- solve(W) %*% Omega2 %*% solve(W) / (N * T)
   # ========================================
   # Calculate bias estimators
   # ========================================
   B1 <- c()
   B2 <- c()
   B3 <- c()
-  for(k in 1:K) {
+  for (k in 1:K) {
     XX <- X[k, , ]
-    B1[k] <- 1/sqrt(N*T) * sum(diag(Pf %*% trunc(t(res) %*% XX, 0, M1+1)))
-    B2[k] <- 1/sqrt(N*T) * sum(diag(t(XX) %*% Mlambda %*% trunc(res %*% t(res), 1, 1) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
-    B3[k] <- 1/sqrt(N*T) * sum(diag(trunc(t(res) %*% res, M2+1, M2+1) %*% Mf %*% t(XX) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
+    B1[k] <- 1 / sqrt(N*T) * sum(diag(Pf_all %*% trunc(t(res) %*% XX, 0, M1+1)))
+    B2[k] <- 1 / sqrt(N*T) * sum(diag(t(XX) %*% Mlambda_all %*% trunc(res %*% t(res), 1, 1) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
+    B3[k] <- 1 / sqrt(N*T) * sum(diag(trunc(t(res) %*% res, M2+1, M2+1) %*% Mf_all %*% t(XX) %*% lambda %*% solve(t(lambda) %*% lambda) %*% solve(t(f) %*% f) %*% t(f)))
   }
-  den <- matrix(0, K, K)
-  for(k1 in 1:K) {
-    for(k2 in 1:K) {
-      den[k1, k2] <- 1/N/T * sum(diag(Mf %*% t(X[k1, , ]) %*% Mlambda %*% X[k2, , ]))
-    }
-  }
-  bcorr1 <- -solve(den) %*% B1/sqrt(N*T)
-  bcorr2 <- -solve(den) %*% B2/sqrt(N*T)
-  bcorr3 <- -solve(den) %*% B3/sqrt(N*T)
+  bcorr1 <- -solve(W) %*% matrix(B1) / sqrt(N*T)
+  bcorr2 <- -solve(W) %*% matrix(B2) / sqrt(N*T)
+  bcorr3 <- -solve(W) %*% matrix(B3) / sqrt(N*T)
   # ========================================
   # Output results
   # ========================================
   return(structure(list(beta = beta, exitflag = exitflag,
                         lambda = lambda, f = f,
                         Vbeta1 = Vbeta1, Vbeta2 = Vbeta2, Vbeta3 = Vbeta3,
-                        bcorr1 = bcorr1, bcorr2 = bcorr2, bcorr3 = bcorr3),
+                        bcorr1 = bcorr1, bcorr2 = bcorr2, bcorr3 = bcorr3,
+                        parameter = list(lambda_known = lambda_known, f_known = f_known,
+                                         report = report, precision_beta = precision_beta,
+                                         method = method, start = start,
+                                         repMIN = repMIN, repMAX = repMAX,
+                                         M1 = M1, M2 = M2)),
                    class = "ls_factor"))
 }
 
