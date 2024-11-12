@@ -19,11 +19,11 @@ Description: This package provides tools for estimation and inference for a regr
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: 
-    abind,
-    doParallel,
-    foreach,
     pracma,
     RcppDE,
     stats
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+Depends: 
+    R (>= 2.10)
+LazyData: true

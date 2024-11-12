@@ -63,11 +63,11 @@ summary.ls_factor <- function(object, ...) {
                                                 dim(object$beta)[1]))
   for(i in c(1:dim(object$beta)[1])) {
     sum_res$CI$CI_LB[sum_res$CI$est == paste0("beta", i)] <-
-      c(sum_res$beta[[paste0("beta", i)]] - sqrt(sum_res$var_cov$homoscedasticity[i, i]) * qnorm(1 - alpha / 2),
-        sum_res$beta[[paste0("beta", i)]] - sqrt(sum_res$var_cov$heteroscedasticity[i, i]) * qnorm(1 - alpha / 2))
+      c(sum_res$beta[[paste0("beta", i)]] - sqrt(sum_res$var_cov$homoscedasticity[i, i]) * stats::qnorm(1 - alpha / 2),
+        sum_res$beta[[paste0("beta", i)]] - sqrt(sum_res$var_cov$heteroscedasticity[i, i]) * stats::qnorm(1 - alpha / 2))
     sum_res$CI$CI_UB[sum_res$CI$est == paste0("beta", i)] <-
-      c(sum_res$beta[[paste0("beta", i)]] + sqrt(sum_res$var_cov$homoscedasticity[i, i]) * qnorm(1 - alpha / 2),
-        sum_res$beta[[paste0("beta", i)]] + sqrt(sum_res$var_cov$heteroscedasticity[i, i]) * qnorm(1 - alpha / 2))
+      c(sum_res$beta[[paste0("beta", i)]] + sqrt(sum_res$var_cov$homoscedasticity[i, i]) * stats::qnorm(1 - alpha / 2),
+        sum_res$beta[[paste0("beta", i)]] + sqrt(sum_res$var_cov$heteroscedasticity[i, i]) * stats::qnorm(1 - alpha / 2))
     sum_res$CI$CI_length[sum_res$CI$est == paste0("beta", i)] <-
       sum_res$CI$CI_UB[sum_res$CI$est == paste0("beta", i)] - sum_res$CI$CI_LB[sum_res$CI$est == paste0("beta", i)]
   }

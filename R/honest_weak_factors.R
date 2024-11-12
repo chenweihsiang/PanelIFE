@@ -196,9 +196,9 @@ honest_weak_factors <- function(Y, X, R, Gamma_LS = NULL, alpha = 0.05, clustere
   # ========================================
   beta <- rep(0, K)
   se <- rep(0, K)
-  bias <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
-  LB <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
-  UB <- setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  bias <- stats::setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  LB <- stats::setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
+  UB <- stats::setNames(cbind(data.frame(0:R), data.frame(matrix(NA, nrow = length(0:R), ncol = K))), c("NumberOfWeakFactors", paste0("Est", 1:K)))
   # LB_unadj <- rep(0, K)
   # UB_unadj <- rep(0, K)
   for(Rw in c(0:R)) {

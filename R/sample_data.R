@@ -38,10 +38,10 @@ sample_data <- function(N = 100, T = 20, R = 1, kappa = c(0.5)) {
   beta <- 0
   sigma_u <- 1
   sigma_v <- 1
-  f <- matrix(rnorm(T*R, 0, 1), T, R)                           # factors
-  lambda <- matrix(rnorm(N*R, 0, 1), N, R)                      # factor loading
-  X <- lambda %*% t(f) + matrix(rnorm(N*T, 0, sigma_v^2), N, T) # regressors
-  Y <- beta * X + (lambda %*% diag(kappa, length(kappa), length(kappa))) %*% t(f) + matrix(rnorm(N*T, 0, sigma_u^2), N, T) # outcome variable
+  f <- matrix(stats::rnorm(T*R, 0, 1), T, R)                           # factors
+  lambda <- matrix(stats::rnorm(N*R, 0, 1), N, R)                      # factor loading
+  X <- lambda %*% t(f) + matrix(stats::rnorm(N*T, 0, sigma_v^2), N, T) # regressors
+  Y <- beta * X + (lambda %*% diag(kappa, length(kappa), length(kappa))) %*% t(f) + matrix(stats::rnorm(N*T, 0, sigma_u^2), N, T) # outcome variable
   XX <- array(0, dim = c(1, N, T))                              # only one regressor
   XX[1, , ] <- X
   # ===
