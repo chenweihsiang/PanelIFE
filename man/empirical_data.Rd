@@ -103,6 +103,8 @@ empirical_data
 \description{
 Data of the divorce rate in the USA from 1956 to 1988, originally from Friedberg (1998, "Did Unilateral Divorce Raise Divorce Rates? Evidence from Panel Data") and Wolfers (2006, "Did Unilateral Divorce Laws Raise Divorce Rates? A Reconciliation and New Results").
 Here, this empirical dataset follows Kim and Oka (2014, "Divorce Law Reforms and Divorce Rates in the USA: An Interactive Fixed‐Effects Approach") and use their data to construct a balanced panel with \code{N = 48} states and \code{T = 33} years.
+}
+\note{
 \strong{Examples} section provides replication code for Table 5 and 9 in Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 }
 \examples{
