@@ -160,7 +160,7 @@
 #' print(Debiased_summary, row.names = FALSE)
 #'
 #' # Replication of Table 9 in Armstrong, Weidner, and Zeleneev (2024)
-#' ## Data cleaning
+## Data cleaning
 #' df <- PanelIFE::empirical_data[ , -1]       # Load data without two-letter state code
 #' df <- df[df$id_st != 16 & df$id_st != 33, ] # Drop IN (id == 16) and NM (id == 33)
 #' XX <- df[ , grep("dyn_uni", colnames(df))]
@@ -174,6 +174,14 @@
 #' for(k in 1:K) {
 #'   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
 #' }
+#' # ===
+#' D <- array(0, dim = c(4, N, T))             # Using one regressor only
+#' D[1, , ] <- apply(X[1:2, , ], c(2, 3), sum)
+#' D[2, , ] <- apply(X[3:4, , ], c(2, 3), sum)
+#' D[3, , ] <- apply(X[5:6, , ], c(2, 3), sum)
+#' D[4, , ] <- apply(X[7:8, , ], c(2, 3), sum)
+#' X <- D
+#' K <- 4
 #' ## Setting estimation parameters
 #' set.seed(1)
 #' beta0 <- rep(0, K)
