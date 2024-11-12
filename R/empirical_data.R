@@ -175,7 +175,7 @@
 #'   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
 #' }
 #' # ===
-#' D <- array(0, dim = c(4, N, T))             # Using one regressor only
+#' D <- array(0, dim = c(4, N, T))             # Using four regressors
 #' D[1, , ] <- apply(X[1:2, , ], c(2, 3), sum)
 #' D[2, , ] <- apply(X[3:4, , ], c(2, 3), sum)
 #' D[3, , ] <- apply(X[5:6, , ], c(2, 3), sum)
