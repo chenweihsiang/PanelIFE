@@ -1,7 +1,7 @@
 Package: PanelIFE
 Title: Panels with Interactive Fixed Effects
 Version: 0.0
-Date: 2024-07-10
+Date: 2024-11-01
 Authors@R: c(person("Timothy", "Armstrong", role = c("aut"),
                      email = "timothy.armstrong@usc.edu"),
              person("Chen-Wei", "Hsiang", role = c("aut", "cre"),

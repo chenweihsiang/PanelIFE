@@ -101,128 +101,130 @@
 #' \strong{Examples} section provides replication code for Table 5 and 9 in Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 #'
 #' @examples
-#' # Replication of Table 5 in Armstrong, Weidner, and Zeleneev (2024)
-#' ## Data cleaning
-#' df <- PanelIFE::empirical_data[ , -1]       # Load data without two-letter state code
-#' df <- df[df$id_st != 16 & df$id_st != 33, ] # Drop IN (id == 16) and NM (id == 33)
-#' XX <- df[ , grep("dyn_uni", colnames(df))]
-#' # ===
-#' T <- max(df$year) - min(df$year) + 1
-#' N <- nrow(df) / T
-#' K <- ncol(XX)
-#' # ===
-#' Y <- matrix(df$div_rate_rev02, nrow = N, ncol = T, byrow = TRUE)
-#' X <- array(0, dim = c(K, N, T))
-#' for(k in 1:K) {
-#'   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
-#' }
-#' # ===
-#' D <- array(0, dim = c(1, N, T))             # Using one regressor only
-#' D[1, , ] <- apply(X, c(2, 3), sum)
-#' X <- D
-#' K <- 1
-#' ## Setting estimation parameters
-#' set.seed(1)
-#' beta0 <- rep(0, K)
-#' alpha <- 0.05                               # 1 - confidence level
-#' Rmax <- 6                                   # Maximum number of the factors
-#' lambda_known <- matrix(rep(1, N))           # Standard time effects
-#' f_known <- cbind(rep(1, T), (1:T), (1:T)^2) # Individual effects + time trend + time trend^2
-#' ## Least squares estimation of linear panel data models with interactive fixed effects (LS factors)
-#' LS_summary <- setNames(data.frame(matrix(NA, nrow = Rmax, ncol = 4)),
-#'                        c("R", "beta", "CI_LB", "CI_UB"))
-#' for(R in 1:Rmax) {
-#'   res <- ls_factor(Y = Y, X = X, R = R,
-#'                    lambda_known = lambda_known, f_known = f_known,
-#'                    report = "silent", precision_beta = 10^(-8), method = "m1",
-#'                    start = beta0, repMIN = 30, repMAX = 300, M1 = 2, M2 = 2)
-#'   LS_summary$R[R] <- R
-#'   LS_summary$beta[R] <- res$beta - res$bcorr2 - res$bcorr3
-#'   LS_summary$CI_LB[R] <- LS_summary$beta[R] - sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
-#'   LS_summary$CI_UB[R] <- LS_summary$beta[R] + sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
-#' }
-#' ## Robust estimation and inference in panels with interactive fixed effects (honest weak factors)
-#' Debiased_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * 2, ncol = 5)),
-#'                              c("R", "Rw", "beta", "CI_LB", "CI_UB"))
-#' for(R in 1:Rmax) {
-#' res <- honest_weak_factors(Y = Y, X = X, R = R,
-#'                            Gamma_LS = NULL, alpha = 0.05, clustered_se = FALSE,
-#'                            lambda_known = lambda_known, f_known = f_known,
-#'                            itermax = 75, reltol = 10^(-6))
-#'   Debiased_summary$R[(2*R-1):(2*R)] <- R
-#'   Debiased_summary$Rw[(2*R-1):(2*R)] <- c(0, 1)
-#'   Debiased_summary$beta[(2*R-1):(2*R)] <- res$beta
-#'   Debiased_summary$CI_LB[(2*R-1):(2*R)] <- res$LB[1:2, 2]
-#'   Debiased_summary$CI_UB[(2*R-1):(2*R)] <- res$UB[1:2, 2]
-#' }
-#' ## Print results
-#' print(LS_summary, row.names = FALSE)
-#' print(Debiased_summary, row.names = FALSE)
+#' # Following replication requires some time for computation
 #'
-#' # Replication of Table 9 in Armstrong, Weidner, and Zeleneev (2024)
-## Data cleaning
-#' df <- PanelIFE::empirical_data[ , -1]       # Load data without two-letter state code
-#' df <- df[df$id_st != 16 & df$id_st != 33, ] # Drop IN (id == 16) and NM (id == 33)
-#' XX <- df[ , grep("dyn_uni", colnames(df))]
-#' # ===
-#' T <- max(df$year) - min(df$year) + 1
-#' N <- nrow(df) / T
-#' K <- ncol(XX)
-#' # ===
-#' Y <- matrix(df$div_rate_rev02, nrow = N, ncol = T, byrow = TRUE)
-#' X <- array(0, dim = c(K, N, T))
-#' for(k in 1:K) {
-#'   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
-#' }
-#' # ===
-#' D <- array(0, dim = c(4, N, T))             # Using four regressors
-#' D[1, , ] <- apply(X[1:2, , ], c(2, 3), sum)
-#' D[2, , ] <- apply(X[3:4, , ], c(2, 3), sum)
-#' D[3, , ] <- apply(X[5:6, , ], c(2, 3), sum)
-#' D[4, , ] <- apply(X[7:8, , ], c(2, 3), sum)
-#' X <- D
-#' K <- 4
-#' ## Setting estimation parameters
-#' set.seed(1)
-#' beta0 <- rep(0, K)
-#' alpha <- 0.05                               # 1 - confidence level
-#' Rmax <- 6                                   # Maximum number of the factors
-#' lambda_known <- matrix(rep(1, N))           # Standard time effects
-#' f_known <- cbind(rep(1, T), (1:T), (1:T)^2) # Individual effects + time trend + time trend^2
-#' ## Least squares estimation of linear panel data models with interactive fixed effects (LS factors)
-#' LS_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * K, ncol = 5)),
-#'                        c("R", "k", "beta", "CI_LB", "CI_UB"))
-#' for(R in 1:Rmax) {
-#'   res <- ls_factor(Y = Y, X = X, R = R,
-#'                    lambda_known = lambda_known, f_known = f_known,
-#'                    report = "silent", precision_beta = 10^(-8), method = "m1",
-#'                    start = beta0, repMIN = 30, repMAX = 300, M1 = 2, M2 = 2)
-#'   LS_summary$k[(K*R-(K-1)):(K*R)] <- 1:K
-#'   LS_summary$R[(K*R-(K-1)):(K*R)] <- R
-#'   LS_summary$beta[(K*R-(K-1)):(K*R)] <- as.numeric(res$beta - res$bcorr2 - res$bcorr3)
-#'   LS_summary$CI_LB[(K*R-(K-1)):(K*R)] <-
-#'     LS_summary$beta[(K*R-(K-1)):(K*R)] - sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
-#'   LS_summary$CI_UB[(K*R-(K-1)):(K*R)] <-
-#'     LS_summary$beta[(K*R-(K-1)):(K*R)] + sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
-#' }
-#' ## Robust estimation and inference in panels with interactive fixed effects (honest weak factors)
-#' Debiased_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * K * 2, ncol = 6)),
-#'                              c("R", "k", "Rw", "beta", "CI_LB", "CI_UB"))
-#' for(R in 1:Rmax) {
-#'   res <- honest_weak_factors(Y = Y, X = X, R = R,
-#'                              Gamma_LS = NULL, alpha = 0.05, clustered_se = FALSE,
-#'                              lambda_known = lambda_known, f_known = f_known,
-#'                              itermax = 50, reltol = 10^(-4))
-#'   Debiased_summary$k[(2*K*R-(2*K-1)):(2*K*R)] <- rep(1:K, each = 2)
-#'   Debiased_summary$R[(2*K*R-(2*K-1)):(2*K*R)] <- R
-#'   Debiased_summary$Rw[(2*K*R-(2*K-1)):(2*K*R)] <- rep(c(0, 1), K)
-#'   Debiased_summary$beta[(2*K*R-(2*K-1)):(2*K*R)] <- rep(res$beta, each= 2)
-#'   Debiased_summary$CI_LB[(2*K*R-(2*K-1)):(2*K*R)] <- c(as.matrix(res$LB[1:2, -1]))
-#'   Debiased_summary$CI_UB[(2*K*R-(2*K-1)):(2*K*R)] <- c(as.matrix(res$UB[1:2, -1]))
-#' }
-#' ## Print results
-#' print(LS_summary, row.names = FALSE)
-#' print(Debiased_summary, row.names = FALSE)
+#' # # Replication of Table 5 in Armstrong, Weidner, and Zeleneev (2024)
+#' # #' # ## Data cleaning
+#' # df <- PanelIFE::empirical_data[ , -1]       # Load data without two-letter state code
+#' # df <- df[df$id_st != 16 & df$id_st != 33, ] # Drop IN (id == 16) and NM (id == 33)
+#' # XX <- df[ , grep("dyn_uni", colnames(df))]
+#' # # ===
+#' # T <- max(df$year) - min(df$year) + 1
+#' # N <- nrow(df) / T
+#' # K <- ncol(XX)
+#' # # ===
+#' # Y <- matrix(df$div_rate_rev02, nrow = N, ncol = T, byrow = TRUE)
+#' # X <- array(0, dim = c(K, N, T))
+#' # for(k in 1:K) {
+#' #   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
+#' # }
+#' # # ===
+#' # D <- array(0, dim = c(1, N, T))             # Using one regressor only
+#' # D[1, , ] <- apply(X, c(2, 3), sum)
+#' # X <- D
+#' # K <- 1
+#' # ## Setting estimation parameters
+#' # set.seed(1)
+#' # beta0 <- rep(0, K)
+#' # alpha <- 0.05                               # 1 - confidence level
+#' # Rmax <- 6                                   # Maximum number of the factors
+#' # lambda_known <- matrix(rep(1, N))           # Standard time effects
+#' # f_known <- cbind(rep(1, T), (1:T), (1:T)^2) # Individual effects + time trend + time trend^2
+#' # ## Least squares estimation of linear panel data models with interactive fixed effects (LS factors)
+#' # LS_summary <- setNames(data.frame(matrix(NA, nrow = Rmax, ncol = 4)),
+#' #                        c("R", "beta", "CI_LB", "CI_UB"))
+#' # for(R in 1:Rmax) {
+#' #   res <- ls_factor(Y = Y, X = X, R = R,
+#' #                    lambda_known = lambda_known, f_known = f_known,
+#' #                    report = "silent", precision_beta = 10^(-8), method = "m1",
+#' #                    start = beta0, repMIN = 30, repMAX = 300, M1 = 2, M2 = 2)
+#' #   LS_summary$R[R] <- R
+#' #   LS_summary$beta[R] <- res$beta - res$bcorr2 - res$bcorr3
+#' #   LS_summary$CI_LB[R] <- LS_summary$beta[R] - sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
+#' #   LS_summary$CI_UB[R] <- LS_summary$beta[R] + sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
+#' # }
+#' # ## Robust estimation and inference in panels with interactive fixed effects (honest weak factors)
+#' # Debiased_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * 2, ncol = 5)),
+#' #                              c("R", "Rw", "beta", "CI_LB", "CI_UB"))
+#' # for(R in 1:Rmax) {
+#' # res <- honest_weak_factors(Y = Y, X = X, R = R,
+#' #                            Gamma_LS = NULL, alpha = 0.05, clustered_se = FALSE,
+#' #                            lambda_known = lambda_known, f_known = f_known,
+#' #                            itermax = 75, reltol = 10^(-6))
+#' #   Debiased_summary$R[(2*R-1):(2*R)] <- R
+#' #   Debiased_summary$Rw[(2*R-1):(2*R)] <- c(0, 1)
+#' #   Debiased_summary$beta[(2*R-1):(2*R)] <- res$beta
+#' #   Debiased_summary$CI_LB[(2*R-1):(2*R)] <- res$LB[1:2, 2]
+#' #   Debiased_summary$CI_UB[(2*R-1):(2*R)] <- res$UB[1:2, 2]
+#' # }
+#' # ## Print results
+#' # print(LS_summary, row.names = FALSE)
+#' # print(Debiased_summary, row.names = FALSE)
+#'
+#' # # Replication of Table 9 in Armstrong, Weidner, and Zeleneev (2024)
+#' # ## Data cleaning
+#' # df <- PanelIFE::empirical_data[ , -1]       # Load data without two-letter state code
+#' # df <- df[df$id_st != 16 & df$id_st != 33, ] # Drop IN (id == 16) and NM (id == 33)
+#' # XX <- df[ , grep("dyn_uni", colnames(df))]
+#' # # ===
+#' # T <- max(df$year) - min(df$year) + 1
+#' # N <- nrow(df) / T
+#' # K <- ncol(XX)
+#' # # ===
+#' # Y <- matrix(df$div_rate_rev02, nrow = N, ncol = T, byrow = TRUE)
+#' # X <- array(0, dim = c(K, N, T))
+#' # for(k in 1:K) {
+#' #   X[k, , ] <- matrix(XX[ , k], nrow = N, ncol = T, byrow = TRUE)
+#' # }
+#' # # ===
+#' # D <- array(0, dim = c(4, N, T))             # Using four regressors
+#' # D[1, , ] <- apply(X[1:2, , ], c(2, 3), sum)
+#' # D[2, , ] <- apply(X[3:4, , ], c(2, 3), sum)
+#' # D[3, , ] <- apply(X[5:6, , ], c(2, 3), sum)
+#' # D[4, , ] <- apply(X[7:8, , ], c(2, 3), sum)
+#' # X <- D
+#' # K <- 4
+#' # ## Setting estimation parameters
+#' # set.seed(1)
+#' # beta0 <- rep(0, K)
+#' # alpha <- 0.05                               # 1 - confidence level
+#' # Rmax <- 6                                   # Maximum number of the factors
+#' # lambda_known <- matrix(rep(1, N))           # Standard time effects
+#' # f_known <- cbind(rep(1, T), (1:T), (1:T)^2) # Individual effects + time trend + time trend^2
+#' # ## Least squares estimation of linear panel data models with interactive fixed effects (LS factors)
+#' # LS_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * K, ncol = 5)),
+#' #                        c("R", "k", "beta", "CI_LB", "CI_UB"))
+#' # for(R in 1:Rmax) {
+#' #   res <- ls_factor(Y = Y, X = X, R = R,
+#' #                    lambda_known = lambda_known, f_known = f_known,
+#' #                    report = "silent", precision_beta = 10^(-8), method = "m1",
+#' #                    start = beta0, repMIN = 30, repMAX = 300, M1 = 2, M2 = 2)
+#' #   LS_summary$k[(K*R-(K-1)):(K*R)] <- 1:K
+#' #   LS_summary$R[(K*R-(K-1)):(K*R)] <- R
+#' #   LS_summary$beta[(K*R-(K-1)):(K*R)] <- as.numeric(res$beta - res$bcorr2 - res$bcorr3)
+#' #   LS_summary$CI_LB[(K*R-(K-1)):(K*R)] <-
+#' #     LS_summary$beta[(K*R-(K-1)):(K*R)] - sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
+#' #   LS_summary$CI_UB[(K*R-(K-1)):(K*R)] <-
+#' #     LS_summary$beta[(K*R-(K-1)):(K*R)] + sqrt(diag(res$Vbeta2)) * qnorm(1 - alpha/2)
+#' # }
+#' # ## Robust estimation and inference in panels with interactive fixed effects (honest weak factors)
+#' # Debiased_summary <- setNames(data.frame(matrix(NA, nrow = Rmax * K * 2, ncol = 6)),
+#' #                              c("R", "k", "Rw", "beta", "CI_LB", "CI_UB"))
+#' # for(R in 1:Rmax) {
+#' #   res <- honest_weak_factors(Y = Y, X = X, R = R,
+#' #                              Gamma_LS = NULL, alpha = 0.05, clustered_se = FALSE,
+#' #                              lambda_known = lambda_known, f_known = f_known,
+#' #                              itermax = 50, reltol = 10^(-4))
+#' #   Debiased_summary$k[(2*K*R-(2*K-1)):(2*K*R)] <- rep(1:K, each = 2)
+#' #   Debiased_summary$R[(2*K*R-(2*K-1)):(2*K*R)] <- R
+#' #   Debiased_summary$Rw[(2*K*R-(2*K-1)):(2*K*R)] <- rep(c(0, 1), K)
+#' #   Debiased_summary$beta[(2*K*R-(2*K-1)):(2*K*R)] <- rep(res$beta, each= 2)
+#' #   Debiased_summary$CI_LB[(2*K*R-(2*K-1)):(2*K*R)] <- c(as.matrix(res$LB[1:2, -1]))
+#' #   Debiased_summary$CI_UB[(2*K*R-(2*K-1)):(2*K*R)] <- c(as.matrix(res$UB[1:2, -1]))
+#' # }
+#' # ## Print results
+#' # print(LS_summary, row.names = FALSE)
+#' # print(Debiased_summary, row.names = FALSE)
 #'
 
 
