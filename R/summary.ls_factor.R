@@ -72,8 +72,7 @@ summary.ls_factor <- function(object, ...) {
       sum_res$CI$CI_UB[sum_res$CI$est == paste0("beta", i)] - sum_res$CI$CI_LB[sum_res$CI$est == paste0("beta", i)]
   }
   # ===
-  class(sum_res) <- "summary.ls_factor"
-  return(sum_res)
+  return(structure(sum_res, class = "summary.ls_factor"))
 }
 
 

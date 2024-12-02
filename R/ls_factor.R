@@ -53,6 +53,7 @@
 #' @param repMAX (Optional) Maximal number, which is a positive integer, of runs of optimization (in case numerical optimization doesn't terminate properly, we do multiple runs even for \code{repMIN = 1})
 #' @param M1 (Optional) A positive integer, bandwidth for bias correction for dynamic bias (bcorr1), \code{M1} is the number of lags of correlation between regressors and errors that is corrected for in dynamic bias correction
 #' @param M2 (Optional) A non-negative integer, bandwidth for bias correction for time-serial correlation (\code{bcorr3}), \code{M2 = 0} only corrects for time-series heteroscedasticity, while \code{M2 > 0} corrects for time-correlation in errors up to lag \code{M2}
+#' @param DoF_adj (Optional) Whether or not to adjust for degree of freedom, where default is set to \code{DoF_adj = FALSE}
 #'
 #' @return A list of results, where
 #' \itemize{
@@ -90,41 +91,10 @@
 #' @export
 
 
-ls_factor <- function(Y, X, R, lambda_known, f_known, report, precision_beta, method, start, repMIN, repMAX, M1, M2) {
-  # ========================================
-  # Set up default parameters
-  # ========================================
-  # Input parameters that are not provided are given default parameters as follows
-  if(missing(lambda_known)) {
-    lambda_known <- matrix(NA, nrow = nrow(Y), ncol = 0) # Default choice is no known factor loadings
-  }
-  if(missing(f_known)) {
-    f_known <- matrix(NA, nrow = ncol(Y), ncol = 0) # Default choice is no known factors
-  }
-  if(missing(report)) {
-    report <- "report" # Default choice is to report the progress
-  }
-  if(missing(precision_beta)) {
-    precision_beta <- 10^(-8)
-  }
-  if(missing(method)) {
-    method <- "m1" # Default computation method is Method 1 described above
-  }
-  if(missing(start)) {
-    start <- rep(0, K)
-  }
-  if(missing(repMIN)) {
-    repMIN <- 30
-  }
-  if(missing(repMAX)) {
-    repMAX <- 10 * repMIN
-  }
-  if(missing(M1)) {
-    M1 <- 1
-  }
-  if(missing(M2)) {
-    M2 <- 0
-  }
+ls_factor <- function(Y, X, R,
+                      lambda_known = NA, f_known = NA,
+                      report = "report", precision_beta = 10^(-8), method = "m1",
+                      start, repMIN, repMAX, M1 = 1, M2 = 0, DoF_adj = FALSE) {
   # ========================================
   # Check if inputs are valid
   # ========================================
@@ -145,12 +115,33 @@ ls_factor <- function(Y, X, R, lambda_known, f_known, report, precision_beta, me
     }
   }
   # ===
-  if(!("array" %in% class(lambda_known) & length(dim(lambda_known)) == 2)) {
+  if(!("array" %in% class(lambda_known) | "logical" %in% class(lambda_known))) {
     stop("Format of input 'lambda_known' is incorrect")
   }
-  # ===
-  if(!("array" %in% class(f_known) & length(dim(f_known)) == 2)) {
+  if(!("array" %in% class(f_known) | "logical" %in% class(f_known))) {
     stop("Format of input 'f_known' is incorrect")
+  }
+  # ===
+  if("logical" %in% class(lambda_known)) {
+    if(is.na(lambda_known)) {
+      lambda_known <- matrix(NA, nrow = nrow(Y), ncol = 0) # Default choice is no known factor loadings
+    } else {
+      stop("Format of input 'lambda_known' is incorrect")
+    }
+  }
+  if("logical" %in% class(f_known)) {
+    if(is.na(f_known)) {
+      f_known <- matrix(NA, nrow = ncol(Y), ncol = 0) # Default choice is no known factors
+    } else {
+      stop("Format of input 'f_known' is incorrect")
+    }
+  }
+  # ===
+  if(dim(lambda_known)[1] != nrow(Y)) {
+    stop("The dimension of input 'lambda_known' is incorrect")
+  }
+  if(dim(f_known)[1] != ncol(Y)) {
+    stop("The dimension of input 'f_known' is incorrect")
   }
   # ===
   if(!("character" %in% class(report) & report %in% c("silent", "report"))) {
@@ -213,6 +204,19 @@ ls_factor <- function(Y, X, R, lambda_known, f_known, report, precision_beta, me
   # ===
   Rex1 <- dim(lambda_known)[2]
   Rex2 <- dim(f_known)[2]
+  # ========================================
+  # Set up default parameters
+  # ========================================
+  # Input parameters that are not provided are given default parameters as follows
+  if(missing(start)) {
+    start <- rep(0, K)
+  }
+  if(missing(repMIN)) {
+    repMIN <- 30
+  }
+  if(missing(repMAX)) {
+    repMAX <- 10 * repMIN
+  }
   # ========================================
   # Project out all known factors and loadings
   # ========================================
@@ -370,12 +374,22 @@ ls_factor <- function(Y, X, R, lambda_known, f_known, report, precision_beta, me
       Xk1 <- Mlambda_all %*% X[k1, , ] %*% Mf_all
       Xk2 <- Mlambda_all %*% X[k2, , ] %*% Mf_all
       W[k1, k2] <- (1 / (N * T)) * sum(diag(Mf_all %*% t(X[k1, , ]) %*% Mlambda_all %*% X[k2, , ])) # Hessian
-      Omega[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
-      Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(trunc(t(res * Xk1) %*% (res * Xk2), M2 + 1, M2 + 1))
-      # Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1))) # Old and incorrect code
+      if(DoF_adj == TRUE) {
+        Omega[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
+        Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(trunc(t(res * Xk1) %*% (res * Xk2), M2 + 1, M2 + 1))
+        # Omega2[k1, k2] <- (1 / ((N-R-Rex1) * (T-R-Rex2))) * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1))) # Old and incorrect code from "LS_factor.m"
+      } else {
+        Omega[k1, k2] <- (1 / (N * T)) * sum((as.vector(Xk1) * as.vector(Xk2)) * (as.vector(res)^2)) # Variance of Score
+        Omega2[k1, k2] <- (1 / (N * T)) * sum(trunc(t(res * Xk1) %*% (res * Xk2), M2 + 1, M2 + 1))
+        # Omega2[k1, k2] <- (1 / (N * T)) * sum(diag(trunc(t(res * Xk1) %*% (res * Xk1), M2 + 1, M2 + 1))) # Old and incorrect code from "LS_factor.m"
+      }
     }
   }
-  sigma2 <- sum(diag(t(res) %*% res)) / ((N-R-Rex1) * (T-R-Rex2))
+  if(DoF_adj == TRUE) {
+    sigma2 <- sum(diag(t(res) %*% res)) / ((N-R-Rex1) * (T-R-Rex2))
+  } else {
+    sigma2 <- sum(diag(t(res) %*% res)) / (N * T)
+  }
   Vbeta1 <- solve(W) * sigma2 / (N * T)
   Vbeta2 <- solve(W) %*% Omega %*% solve(W) / (N * T)
   Vbeta3 <- solve(W) %*% Omega2 %*% solve(W) / (N * T)

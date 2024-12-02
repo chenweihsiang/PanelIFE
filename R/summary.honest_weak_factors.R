@@ -48,8 +48,7 @@ summary.honest_weak_factors <- function(object, ...) {
                   A = object$A,
                   parameter = object$parameter)
   # ===
-  class(sum_res) <- "summary.honest_weak_factors"
-  return(sum_res)
+  return(structure(sum_res, class = "summary.honest_weak_factors"))
 }
 
 

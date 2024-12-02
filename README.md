@@ -32,7 +32,7 @@ sum_res <- summary(res)
 print(sum_res)
 ```
 
-The following example considers the method of robust estimation and inference in panels with interactive fixed effects which can accommodate weak factors (Armstrong, Weidner, and Zeleneev, 2023):
+The following example considers the method of robust estimation and inference in panels with interactive fixed effects which can accommodate weak factors (Armstrong, Weidner, and Zeleneev, 2024):
 
 ```R
 # Estimate the linear panel data model with interactive fixed effects
@@ -47,7 +47,7 @@ print(sum_res)
 
 Data of the divorce rate in the USA from 1956 to 1988, originally from Friedberg (1998) and Wolfers (2006) is included in the package with the code `PanelIFE::empirical_data`. Here, this empirical dataset follows Kim and Oka (2014) and use their data to construct a balanced panel with $N = 48$ states and $T = 33$ years.
 
-For the replication code of Table 5 and Table 9 in Armstrong, Weidner, and Zeleneev (2024), please refer to the documentation of `empirical_data` in the package by running
+For the replication code of Table 5 and Table 10 in Armstrong, Weidner, and Zeleneev (2024), please refer to the documentation of `empirical_data` in the package by running
 
 ```R
 help(empirical_data, package = "PanelIFE")

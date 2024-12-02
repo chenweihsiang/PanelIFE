@@ -30,7 +30,7 @@ A list of simple simulation data, where
 This function generates sample data with interactive fixed effects.
 }
 \details{
-The design follows that data generating process of the simulation in Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
+The design follows that data generating process of the simulation in Armstrong, Weidner, and Zeleneev (2024, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 \deqn{Y_{i,t} = X_{i,t} \beta + \sum_{r=1}^{R} \kappa_{r} \lambda_{i,r}, f_{t,r} + U_{i,t}}
 \deqn{X_{i,t} = \sum_{r=1}^{R} \lambda_{i,r}, f_{t,r} + V_{i,t}}
 where \eqn{\kappa_{r}} controls the strength of factor \eqn{f_{t,r}}, and \eqn{R} is the number of factors.

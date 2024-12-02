@@ -8,16 +8,17 @@ ls_factor(
   Y,
   X,
   R,
-  lambda_known,
-  f_known,
-  report,
-  precision_beta,
-  method,
+  lambda_known = NA,
+  f_known = NA,
+  report = "report",
+  precision_beta = 10^(-8),
+  method = "m1",
   start,
   repMIN,
   repMAX,
-  M1,
-  M2
+  M1 = 1,
+  M2 = 0,
+  DoF_adj = FALSE
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ Note that the actual precision in beta will typically be lower than precision_be
 \item{M1}{(Optional) A positive integer, bandwidth for bias correction for dynamic bias (bcorr1), \code{M1} is the number of lags of correlation between regressors and errors that is corrected for in dynamic bias correction}
 
 \item{M2}{(Optional) A non-negative integer, bandwidth for bias correction for time-serial correlation (\code{bcorr3}), \code{M2 = 0} only corrects for time-series heteroscedasticity, while \code{M2 > 0} corrects for time-correlation in errors up to lag \code{M2}}
+
+\item{DoF_adj}{(Optional) Whether or not to adjust for degree of freedom, where default is set to \code{DoF_adj = FALSE}}
 }
 \value{
 A list of results, where

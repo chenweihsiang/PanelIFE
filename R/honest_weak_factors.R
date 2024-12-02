@@ -3,7 +3,7 @@
 #' @description This method considers estimation and inference for a regression coefficient in panels with interactive fixed effects (i.e., with a factor structure). As the previously developed estimators and confidence intervals (CIs) might be heavily biased and size-distorted when some of the factors are weak, this method has estimators with improved rates of convergence and bias-aware CIs that are uniformly valid regardless of whether the factors are strong or not.
 #'
 #' @details
-#' \strong{Disclaimer:} This function is the implementation of Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
+#' \strong{Disclaimer:} This function is the implementation of Armstrong, Weidner, and Zeleneev (2024, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 #' This code is offered with no guarantees. Not all features of this code were properly tested. Please let me know if you find any bugs or encounter any problems while using this code. All feedback is appreciated.
 #'
 #' \strong{Linear panel regression model with weak factors:}
@@ -27,10 +27,10 @@
 #'   \item Access the preliminary estimate \eqn{\hat{\Gamma}_{pre}} along with a bound \eqn{\hat{C}} on the nuclear norm \eqn{\Vert \Gamma - \hat{\Gamma}_{pre}\Vert_{*}}.
 #'   \item Then consider the regression with the augmented outcomes \eqn{\tilde{Y}_{it} := Y_{it} - \hat{\Gamma}_{pre,it}}.
 #'   \item Construct the confidence interval with the preliminary estimate \eqn{\hat{\Gamma}_{pre}} and bound \eqn{\hat{C}} on the nuclear norm of its estimation error. Such confidence interval is bias-aware, that is, using the bound \eqn{\hat{C}} will take any remaining bias into account after the previous debias procedure.
-#'   \item For detailed implementation, please refer to Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
+#'   \item For detailed implementation, please refer to Armstrong, Weidner, and Zeleneev (2024, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 #' }
 #'
-#' @references For a description of the model see Armstrong, Weidner, and Zeleneev (2023, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
+#' @references For a description of the model see Armstrong, Weidner, and Zeleneev (2024, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
 #'
 #' @param Y \eqn{N \times T} matrix of outcomes
 #' @param X \eqn{K \times N \times T} tensor of regressors
