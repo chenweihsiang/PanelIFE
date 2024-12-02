@@ -57,7 +57,7 @@ help(empirical_data, package = "PanelIFE")
 
 ### References
 
-- Armstrong, T. B., Weidner, M., & Zeleneev, A. (2022). Robust estimation and inference in panels with interactive fixed effects. *arXiv preprint arXiv:2210.06639*. [[arxiv](https://doi.org/10.48550/arXiv.2210.06639)]
+- Armstrong, T. B., Weidner, M., & Zeleneev, A. (2024). Robust estimation and inference in panels with interactive fixed effects. *arXiv preprint arXiv:2210.06639*. [[arxiv](https://doi.org/10.48550/arXiv.2210.06639)]
 - Bai, J. (2009). Panel data models with interactive fixed effects. *Econometrica*, *77*(4), 1229-1279. [[paper](https://doi.org/10.3982/ECTA6135)]
 - Friedberg, L. (1998). Did Unilateral Divorce Raise Divorce Rates? Evidence from Panel Data. *The American Economic Review*, *88*(3), 608-627. [[paper](https://www.jstor.org/stable/116852)]
 - Kim, D., & Oka, T. (2014). Divorce law reforms and divorce rates in the USA: an interactive fixed‐effects approach. *Journal of Applied Econometrics*, *29*(2), 231-245. [[paper](https://doi.org/10.1002/jae.2310)]
