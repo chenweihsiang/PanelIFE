@@ -1,0 +1,51 @@
+#' @title Generate Sample Data with Interactive Fixed Effects
+#'
+#' @description This function generates sample data with interactive fixed effects.
+#'
+#' @details
+#' The design follows that data generating process of the simulation in Armstrong, Weidner, and Zeleneev (2024, "Robust Estimation and Inference in Panels with Interactive Fixed Effects").
+#' \deqn{Y_{i,t} = X_{i,t} \beta + \sum_{r=1}^{R} \kappa_{r} \lambda_{i,r}, f_{t,r} + U_{i,t}}
+#' \deqn{X_{i,t} = \sum_{r=1}^{R} \lambda_{i,r}, f_{t,r} + V_{i,t}}
+#' where \eqn{\kappa_{r}} controls the strength of factor \eqn{f_{t,r}}, and \eqn{R} is the number of factors.
+#' The factors, loadings, and error terms follows the distributions of:
+#' \deqn{\lambda_{i} \sim N(0, I_{R}) \perp f_t \sim N(0, I_{R}) \perp \left(\begin{matrix} U_{i,t} \\ V_{i,t} \end{matrix}\right) \sim N \left( \left(\begin{matrix} 0 \\ 0 \end{matrix}\right), \left(\begin{matrix} \sigma_{U}^2 & 0 \\ 0 & \sigma_{V}^2 \end{matrix}\right) \right).}
+#' We consider the setting of \eqn{(\beta, \sigma_{U}^2, \sigma_{V}^2) = (0, 1, 1)}, various of \eqn{N, T}, and different strength of factors \eqn{\kappa_{r} \in [0, 1]}.
+#' In this simple simulation data, we only consider \eqn{R \in \{ 1, 2 \}}.
+#'
+#' @param N Number of total individuals.
+#' @param T Number of total time periods.
+#' @param R Number of factors.
+#' @param kappa Strength of each factor.
+#'
+#' @return A list of simple simulation data, where
+#' \itemize{
+#'   \item \code{Y} is the \eqn{N \times T} matrix of outcomes.
+#'   \item \code{X} is the \eqn{K \times N \times T} tensor of regressors.
+#'   \item \code{R} is the number of total individuals.
+#'   \item \code{N} is the number of total individuals.
+#'   \item \code{T} is the number of total time periods.
+#'   \item \code{kappa} is the vector of strength factors.
+#' }
+#'
+#' @export
+
+
+sample_data <- function(N = 100, T = 20, R = 1, kappa = c(0.5)) {
+  if(!(R == length(kappa))) {
+    stop("The number of factors and the number of kappa are not consistent")
+  }
+  # ===
+  beta <- 0
+  sigma_u <- 1
+  sigma_v <- 1
+  f <- matrix(stats::rnorm(T*R, 0, 1), T, R)                           # factors
+  lambda <- matrix(stats::rnorm(N*R, 0, 1), N, R)                      # factor loading
+  X <- lambda %*% t(f) + matrix(stats::rnorm(N*T, 0, sigma_v^2), N, T) # regressors
+  Y <- beta * X + (lambda %*% diag(kappa, length(kappa), length(kappa))) %*% t(f) + matrix(stats::rnorm(N*T, 0, sigma_u^2), N, T) # outcome variable
+  XX <- array(0, dim = c(1, N, T))                              # only one regressor
+  XX[1, , ] <- X
+  # ===
+  return(structure(list(Y = Y, X = XX, R = R, N = N, T = T, kappa = kappa),
+                   class = "sample_data"))
+}
+

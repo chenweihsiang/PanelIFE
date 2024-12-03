@@ -1,0 +1,29 @@
+Package: PanelIFE
+Title: Panels with Interactive Fixed Effects
+Version: 0.0
+Date: 2024-11-01
+Authors@R: c(person("Timothy B." , "Armstrong", role = c("aut"),
+                     email = "timothy.armstrong@usc.edu"),
+             person("Chen-Wei", "Hsiang", role = c("aut", "cre"),
+                     email = "chen-wei.hsiang.21@ucl.ac.uk"),
+             person("Martin", "Weidner", role = c("aut"),
+                     email = "martin.weidner@economics.ox.ac.uk"),
+             person("Andrei", "Zeleneev", role = c("aut"),
+                     email = "a.zeleneev@ucl.ac.uk"))
+Author: Timothy B. Armstrong [aut],
+        Chen-Wei Hsiang [aut, cre],
+        Martin Weidner [aut],
+ 	Andrei Zeleneev [aut]
+Maintainer: Chen-Wei Hsiang <chen-wei.hsiang.21@ucl.ac.uk>
+Description: Provides tools for estimation and inference for a regression coefficient in panel data with interactive fixed effects (i.e., with a factor structure), and either with strong factors or weak factors.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports: 
+    pracma,
+    RcppDE,
+    stats
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends: 
+    R (>= 2.10)
+LazyData: true
